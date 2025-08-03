@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useRef } from "react";
 import { toast } from "sonner";
 import moment from 'moment';
 import TableManagement from "./Table";
@@ -22,6 +22,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogClose,
 } from "@/components/ui/dialog";
 import { BASE_API, API_VERSION } from "../../config.json";
 import {
@@ -66,6 +67,7 @@ const UserManagement = ({ users, deleteUser, updateUser }) => {
     const { user } = useAuth();
     const [editingUser, setEditingUser] = useState(null);
     const [editForm, setEditForm] = useState({ username: '', password: '', appId: '' });
+    const closeDialogRef = useRef(null);
     const columns = ["ID", "Username", "Linked App", "Actions"];
 
     const startEditing = (subUser) => {
@@ -103,6 +105,9 @@ const UserManagement = ({ users, deleteUser, updateUser }) => {
                 setEditingUser(null);
                 setEditForm({ username: '', password: '', appId: '' });
                 toast.success('Sub-user updated successfully');
+                if (closeDialogRef.current) {
+                    closeDialogRef.current.click();
+                }
             } else {
                 const errorData = await response.json();
                 toast.error(errorData.message || 'Failed to update sub-user');
@@ -127,6 +132,7 @@ const UserManagement = ({ users, deleteUser, updateUser }) => {
                         </div>
                     </DialogTrigger>
                     <DialogContent className="max-w-md bg-[#0A1323] border-[#1B2B4B]">
+                        <DialogClose ref={closeDialogRef} className="hidden" />
                         <DialogHeader>
                             <DialogTitle className="text-white">Edit User: {username}</DialogTitle>
                             <DialogDescription className="text-gray-400">
