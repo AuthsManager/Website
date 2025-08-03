@@ -19,6 +19,7 @@ export default function Login() {
         newPassword: '',
         confirmPassword: ''
     });
+    const [resetErrors, setResetErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
     const [turnstileToken, setTurnstileToken] = useState('');
     const turnstileRef = useRef(null);
@@ -62,9 +63,29 @@ export default function Login() {
             .catch(() => setError('An error occurred.'));
     }
 
+    function validateEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    function validatePassword(password) {
+        return password.length >= 8;
+    }
+
+    function validateResetCode(code) {
+        return /^\d{6}$/.test(code);
+    }
+
     async function manageForgotPassword() {
-        if (!resetData.email) {
-            toast.error('Email is required.');
+        setResetErrors({});
+        
+        if (!resetData.email.trim()) {
+            setResetErrors({ email: 'Email is required.' });
+            return;
+        }
+        
+        if (!validateEmail(resetData.email)) {
+            setResetErrors({ email: 'Please enter a valid email address.' });
             return;
         }
 
@@ -83,24 +104,45 @@ export default function Login() {
             if (response.ok) {
                 toast.success('Reset code sent to your email!');
                 setResetStep(2);
+                setResetErrors({});
             } else {
-                toast.error(json.message || 'An error occurred.');
+                if (json.message && json.message.toLowerCase().includes('not found')) {
+                    setResetErrors({ email: 'No account found with this email address.' });
+                } else {
+                    setResetErrors({ general: json.message || 'An error occurred.' });
+                }
             }
         } catch (error) {
-            toast.error('An error occurred.');
+            setResetErrors({ general: 'Connection error. Please try again.' });
         } finally {
             setIsLoading(false);
         }
     }
 
     async function handleResetPassword() {
-        if (!resetData.resetCode || !resetData.newPassword || !resetData.confirmPassword) {
-            toast.error('All fields are required.');
-            return;
+        setResetErrors({});
+        const errors = {};
+
+        if (!resetData.resetCode.trim()) {
+            errors.resetCode = 'Reset code is required.';
+        } else if (!validateResetCode(resetData.resetCode)) {
+            errors.resetCode = 'The code must contain exactly 6 digits.';
         }
 
-        if (resetData.newPassword !== resetData.confirmPassword) {
-            toast.error('Passwords do not match.');
+        if (!resetData.newPassword) {
+            errors.newPassword = 'The new password is required.';
+        } else if (!validatePassword(resetData.newPassword)) {
+            errors.newPassword = 'The password must contain at least 8 characters.';
+        }
+
+        if (!resetData.confirmPassword) {
+            errors.confirmPassword = 'Password confirmation is required.';
+        } else if (resetData.newPassword !== resetData.confirmPassword) {
+            errors.confirmPassword = 'The passwords do not match.';
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setResetErrors(errors);
             return;
         }
 
@@ -126,11 +168,18 @@ export default function Login() {
                 setShowResetModal(false);
                 setResetStep(1);
                 setResetData({ email: '', resetCode: '', newPassword: '', confirmPassword: '' });
+                setResetErrors({});
             } else {
-                toast.error(json.message || 'An error occurred.');
+                if (json.message && json.message.toLowerCase().includes('invalid') && json.message.toLowerCase().includes('code')) {
+                    setResetErrors({ resetCode: 'Invalid or expired reset code.' });
+                } else if (json.message && json.message.toLowerCase().includes('expired')) {
+                    setResetErrors({ resetCode: 'The reset code has expired. Request a new code.' });
+                } else {
+                    setResetErrors({ general: json.message || 'An error occurred.' });
+                }
             }
         } catch (error) {
-            toast.error('An error occurred.');
+            setResetErrors({ general: 'Connection error. Please try again.' });
         } finally {
             setIsLoading(false);
         }
@@ -140,6 +189,7 @@ export default function Login() {
         setShowResetModal(false);
         setResetStep(1);
         setResetData({ email: '', resetCode: '', newPassword: '', confirmPassword: '' });
+        setResetErrors({});
     }
 
     return (
@@ -277,13 +327,33 @@ export default function Login() {
                                 <p className="text-white/70 text-sm">
                                     Enter your email address and we'll send you a reset code.
                                 </p>
-                                <Input
-                                    type="email"
-                                    placeholder="Email address"
-                                    value={resetData.email}
-                                    onChange={(e) => setResetData({ ...resetData, email: e.target.value })}
-                                    className="w-full px-4 py-2 bg-white/5 border-white/10 rounded-lg focus:ring-primary/50 focus:border-primary/50 text-white placeholder-white/40"
-                                />
+                                
+                                {resetErrors.general && (
+                                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                        <p className="text-red-400 text-sm">{resetErrors.general}</p>
+                                    </div>
+                                )}
+                                
+                                <div>
+                                    <Input
+                                        type="email"
+                                        placeholder="Email address"
+                                        value={resetData.email}
+                                        onChange={(e) => {
+                                            setResetData({ ...resetData, email: e.target.value });
+                                            if (resetErrors.email) {
+                                                setResetErrors({ ...resetErrors, email: '' });
+                                            }
+                                        }}
+                                        className={`w-full px-4 py-2 bg-white/5 border rounded-lg focus:ring-primary/50 focus:border-primary/50 text-white placeholder-white/40 ${
+                                            resetErrors.email ? 'border-red-500/50' : 'border-white/10'
+                                        }`}
+                                    />
+                                    {resetErrors.email && (
+                                        <p className="text-red-400 text-sm mt-1">{resetErrors.email}</p>
+                                    )}
+                                </div>
+                                
                                 <Button
                                     onClick={manageForgotPassword}
                                     disabled={isLoading}
@@ -297,31 +367,81 @@ export default function Login() {
                                 <p className="text-white/70 text-sm">
                                     Enter the 6-digit code sent to your email and your new password.
                                 </p>
-                                <Input
-                                    type="text"
-                                    placeholder="Reset code (6 digits)"
-                                    value={resetData.resetCode}
-                                    onChange={(e) => setResetData({ ...resetData, resetCode: e.target.value })}
-                                    className="w-full px-4 py-2 bg-white/5 border-white/10 rounded-lg focus:ring-primary/50 focus:border-primary/50 text-white placeholder-white/40"
-                                    maxLength={6}
-                                />
-                                <Input
-                                    type="password"
-                                    placeholder="New password"
-                                    value={resetData.newPassword}
-                                    onChange={(e) => setResetData({ ...resetData, newPassword: e.target.value })}
-                                    className="w-full px-4 py-2 bg-white/5 border-white/10 rounded-lg focus:ring-primary/50 focus:border-primary/50 text-white placeholder-white/40"
-                                />
-                                <Input
-                                    type="password"
-                                    placeholder="Confirm new password"
-                                    value={resetData.confirmPassword}
-                                    onChange={(e) => setResetData({ ...resetData, confirmPassword: e.target.value })}
-                                    className="w-full px-4 py-2 bg-white/5 border-white/10 rounded-lg focus:ring-primary/50 focus:border-primary/50 text-white placeholder-white/40"
-                                />
+                                
+                                {resetErrors.general && (
+                                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                        <p className="text-red-400 text-sm">{resetErrors.general}</p>
+                                    </div>
+                                )}
+                                
+                                <div>
+                                    <Input
+                                        type="text"
+                                        placeholder="Reset code (6 digits)"
+                                        value={resetData.resetCode}
+                                        onChange={(e) => {
+                                            const value = e.target.value.replace(/\D/g, ''); 
+                                            setResetData({ ...resetData, resetCode: value });
+                                            if (resetErrors.resetCode) {
+                                                setResetErrors({ ...resetErrors, resetCode: '' });
+                                            }
+                                        }}
+                                        className={`w-full px-4 py-2 bg-white/5 border rounded-lg focus:ring-primary/50 focus:border-primary/50 text-white placeholder-white/40 ${
+                                            resetErrors.resetCode ? 'border-red-500/50' : 'border-white/10'
+                                        }`}
+                                        maxLength={6}
+                                    />
+                                    {resetErrors.resetCode && (
+                                        <p className="text-red-400 text-sm mt-1">{resetErrors.resetCode}</p>
+                                    )}
+                                </div>
+                                
+                                <div>
+                                    <Input
+                                        type="password"
+                                        placeholder="New password"
+                                        value={resetData.newPassword}
+                                        onChange={(e) => {
+                                            setResetData({ ...resetData, newPassword: e.target.value });
+                                            if (resetErrors.newPassword) {
+                                                setResetErrors({ ...resetErrors, newPassword: '' });
+                                            }
+                                        }}
+                                        className={`w-full px-4 py-2 bg-white/5 border rounded-lg focus:ring-primary/50 focus:border-primary/50 text-white placeholder-white/40 ${
+                                            resetErrors.newPassword ? 'border-red-500/50' : 'border-white/10'
+                                        }`}
+                                    />
+                                    {resetErrors.newPassword && (
+                                        <p className="text-red-400 text-sm mt-1">{resetErrors.newPassword}</p>
+                                    )}
+                                </div>
+                                
+                                <div>
+                                    <Input
+                                        type="password"
+                                        placeholder="Confirm new password"
+                                        value={resetData.confirmPassword}
+                                        onChange={(e) => {
+                                            setResetData({ ...resetData, confirmPassword: e.target.value });
+                                            if (resetErrors.confirmPassword) {
+                                                setResetErrors({ ...resetErrors, confirmPassword: '' });
+                                            }
+                                        }}
+                                        className={`w-full px-4 py-2 bg-white/5 border rounded-lg focus:ring-primary/50 focus:border-primary/50 text-white placeholder-white/40 ${
+                                            resetErrors.confirmPassword ? 'border-red-500/50' : 'border-white/10'
+                                        }`}
+                                    />
+                                    {resetErrors.confirmPassword && (
+                                        <p className="text-red-400 text-sm mt-1">{resetErrors.confirmPassword}</p>
+                                    )}
+                                </div>
+                                
                                 <div className="flex gap-2">
                                     <Button
-                                        onClick={() => setResetStep(1)}
+                                        onClick={() => {
+                                            setResetStep(1);
+                                            setResetErrors({});
+                                        }}
                                         variant="outline"
                                         className="flex-1 py-2 border-white/10 text-white hover:bg-white/5"
                                     >
