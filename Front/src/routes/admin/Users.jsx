@@ -1,5 +1,5 @@
 import useSwr from 'swr';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from "sonner";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -485,6 +485,15 @@ function EditUserDialog({ user, updateUser }) {
         isAdmin: user.subscription?.plan === 'Admin' || false
     });
     const [isOpen, setIsOpen] = useState(false);
+    
+    useEffect(() => {
+        setEditForm({
+            username: user.username || '',
+            email: user.email || '',
+            password: '',
+            isAdmin: user.subscription?.plan === 'Admin' || false
+        });
+    }, [isOpen, user]);
 
     const handleUpdate = async () => {
         const updateData = {};
@@ -502,12 +511,6 @@ function EditUserDialog({ user, updateUser }) {
 
         await updateUser(user.id, updateData);
         setIsOpen(false);
-        setEditForm({
-            username: user.username || '',
-            email: user.email || '',
-            password: '',
-            isAdmin: user.subscription?.plan === 'Admin' || false
-        });
     };
 
     return (
@@ -592,7 +595,7 @@ const UserManagementAdmin = ({ users, deleteUser, toggleBanUser, updateUser, fet
     const { user: currentUser } = useAuth();
     const columns = ["ID", "Username", "Subscription", "Status", "Created At", "Actions"];
 
-    const data = !users || !Array.isArray(users) ? [] : users.map(({ id, username, subscription, banned, created_at }) => ({
+    const data = !users || !Array.isArray(users) ? [] : users.map(({ id, username, email, subscription, banned, created_at }) => ({
         id,
         username,
         sub: (
@@ -617,7 +620,7 @@ const UserManagementAdmin = ({ users, deleteUser, toggleBanUser, updateUser, fet
         actions: (
             <div className="flex items-center gap-2 justify-start md:justify-end">
                 <SubUsersDialog userId={id} username={username} fetcher={fetcher} />
-                <EditUserDialog user={{ id, username, email: users.find(u => u.id === id)?.email, subscription }} updateUser={updateUser} />
+                <EditUserDialog user={{ id, username, email, subscription }} updateUser={updateUser} />
                 <Button 
                     variant="ghost" 
                     size="icon" 
