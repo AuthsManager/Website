@@ -254,9 +254,21 @@ function SubUsersDialog({ userId, username, fetcher }) {
     const { user } = useAuth();
     const [editingUser, setEditingUser] = useState(null);
     const [editForm, setEditForm] = useState({ username: '', password: '', appId: '' });
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [newSubUser, setNewSubUser] = useState({ username: '', password: '', appId: '' });
     
     const { data: subUsers, mutate } = useSwr(
         userId ? `${BASE_API}/v${API_VERSION}/subusers?ownerId=${userId}` : null,
+        fetcher,
+        { 
+            revalidateIfStale: false, 
+            revalidateOnFocus: false, 
+            revalidateOnReconnect: false 
+        }
+    );
+    
+    const { data: userApps } = useSwr(
+        userId ? `${BASE_API}/v${API_VERSION}/admin/apps?ownerId=${userId}` : null,
         fetcher,
         { 
             revalidateIfStale: false, 
@@ -296,6 +308,47 @@ function SubUsersDialog({ userId, username, fetcher }) {
     const cancelEditing = () => {
         setEditingUser(null);
         setEditForm({ username: '', password: '', appId: '' });
+    };
+    
+    const createSubUser = async () => {
+        try {
+            if (!newSubUser.username || !newSubUser.password || !newSubUser.appId) {
+                toast.error('All fields are required');
+                return;
+            }
+            
+            const response = await fetch(`${BASE_API}/v${API_VERSION}/subusers`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Admin ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    username: newSubUser.username,
+                    password: newSubUser.password,
+                    appId: newSubUser.appId,
+                    ownerId: userId
+                })
+            });
+
+            if (response.ok) {
+                mutate();
+                setIsCreateDialogOpen(false);
+                setNewSubUser({ username: '', password: '', appId: '' });
+                toast.success('Sub-user created successfully');
+            } else {
+                const errorData = await response.json();
+                toast.error(errorData.message || 'Failed to create sub-user');
+            }
+        } catch (error) {
+            console.error('Error creating sub-user:', error);
+            toast.error('Error creating sub-user');
+        }
+    };
+    
+    const resetCreateForm = () => {
+        setNewSubUser({ username: '', password: '', appId: '' });
+        setIsCreateDialogOpen(false);
     };
 
     const updateSubUser = async (subUserId) => {
@@ -347,6 +400,81 @@ function SubUsersDialog({ userId, username, fetcher }) {
                     List of sub users created by this user
                     </DialogDescription>
                 </DialogHeader>
+                <div className="flex justify-between items-center mt-4">
+                    <Button 
+                        onClick={() => setIsCreateDialogOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                        Create Sub User
+                    </Button>
+                </div>
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                    <DialogContent className="bg-[#0A1323] border-[#1B2B4B]">
+                        <DialogHeader>
+                            <DialogTitle className="text-white">Create New Sub User</DialogTitle>
+                            <DialogDescription className="text-gray-400">
+                                Create a new sub user for {username}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 mt-4">
+                            <div>
+                                <Label htmlFor="new-username" className="text-white mb-2 block">Username</Label>
+                                <Input
+                                    id="new-username"
+                                    value={newSubUser.username}
+                                    onChange={(e) => setNewSubUser(prev => ({ ...prev, username: e.target.value }))}
+                                    className="bg-[#0A1323] border-[#2C3B5B] text-white"
+                                    placeholder="Enter username"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="new-password" className="text-white mb-2 block">Password</Label>
+                                <Input
+                                    id="new-password"
+                                    type="password"
+                                    value={newSubUser.password}
+                                    onChange={(e) => setNewSubUser(prev => ({ ...prev, password: e.target.value }))}
+                                    className="bg-[#0A1323] border-[#2C3B5B] text-white"
+                                    placeholder="Enter password"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="new-appId" className="text-white mb-2 block">Application</Label>
+                                <Select
+                                    value={newSubUser.appId}
+                                    onValueChange={(value) => setNewSubUser(prev => ({ ...prev, appId: value }))}
+                                >
+                                    <SelectTrigger className="bg-[#0A1323] border-[#2C3B5B] text-white">
+                                        <SelectValue placeholder="Select an application" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#0A1323] border-[#2C3B5B]">
+                                        {userApps?.map((app) => (
+                                            <SelectItem key={app.id} value={app.id} className="text-white hover:bg-[#2C3B5B]">
+                                                {app.name} {app.ownerUsername ? `(${app.ownerUsername})` : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button
+                                variant="ghost"
+                                onClick={resetCreateForm}
+                                className="text-white hover:bg-[#2C3B5B]"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={createSubUser}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                disabled={!newSubUser.username || !newSubUser.password || !newSubUser.appId}
+                            >
+                                Create
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
                 <div className="mt-6">
                     {subUsers && subUsers.length > 0 ? (
                         <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -385,9 +513,9 @@ function SubUsersDialog({ userId, username, fetcher }) {
                                                             <SelectValue placeholder="Select an application" />
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-[#0A1323] border-[#2C3B5B]">
-                                                            {user.applications?.map((app) => (
+                                                            {userApps?.map((app) => (
                                                                 <SelectItem key={app.id} value={app.id} className="text-white hover:bg-[#2C3B5B]">
-                                                                    {app.name}
+                                                                    {app.name} {app.ownerUsername ? `(${app.ownerUsername})` : ''}
                                                                 </SelectItem>
                                                             ))}
                                                         </SelectContent>
@@ -414,7 +542,13 @@ function SubUsersDialog({ userId, username, fetcher }) {
                                         <div className="flex items-center justify-between">
                                             <div className="flex-1">
                                                 <p className="font-medium text-white mb-1">{subUser.username}</p>
-                                                <p className="text-sm text-gray-400">App ID: <span className="font-mono text-blue-400">{subUser.appId}</span></p>
+                                                <p className="text-sm text-gray-400">
+                                                    Application: <span className="font-mono text-blue-400">
+                                                        {userApps?.find(app => app.id === subUser.appId)?.name || subUser.appId}
+                                                        {userApps?.find(app => app.id === subUser.appId)?.ownerUsername ? 
+                                                            ` (${userApps.find(app => app.id === subUser.appId).ownerUsername})` : ''}
+                                                    </span>
+                                                </p>
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200">

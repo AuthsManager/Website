@@ -43,9 +43,11 @@ const createApp = async (req, res) => {
 const getApps = async (req, res) => {
     
     let apps;
+    const { ownerId } = req.query;
     
     if (req.user.isAdmin) {
-        apps = await App.find({});
+        const query = ownerId ? { ownerId } : {};
+        apps = await App.find(query);
         const appsWithOwnerInfo = await Promise.all(apps.map(async (app) => {
             const owner = await User.findOne({ id: app.ownerId });
             return {
