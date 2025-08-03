@@ -2,9 +2,6 @@ import useSwr from 'swr';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/hooks/useAuth";
 import TableManagement from "@/components/tables/Table";
 import { Badge } from "@/components/ui/badge";
@@ -18,13 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import { Ban, CheckCircle, Search, Users, X, Edit } from "lucide-react";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -53,7 +44,6 @@ export default function AdminUsers() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [date, setDate] = useState();
     const [isAdmin, setIsAdmin] = useState(false);
     const fetcher = (url) => fetch(url, { 
         headers: { 'Authorization': `Admin ${localStorage.getItem('token')}` } 
@@ -78,7 +68,6 @@ export default function AdminUsers() {
                 email,
                 username,
                 password,
-                expiration: new Date(date).getTime(),
                 isAdmin
             })
         }).catch(() => null);
@@ -94,7 +83,6 @@ export default function AdminUsers() {
             setEmail('');
             setUsername('');
             setPassword('');
-            setDate(undefined);
             setIsAdmin(false);
 
             toast.success('Create user', { description: 'Successfully created user.' });
@@ -223,31 +211,6 @@ export default function AdminUsers() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                 />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <Label>Expiration</Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                                "w-[280px] justify-start text-left font-normal",
-                                                !date && "text-muted-foreground"
-                                            )}
-                                        >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {date ? format(date, "PPP") : <span>Pick a date</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                        <Calendar
-                                            mode="single"
-                                            selected={date}
-                                            onSelect={setDate}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
                             </div>
                             <div className="flex items-center gap-2">
                                 <input

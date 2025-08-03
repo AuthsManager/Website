@@ -40,12 +40,11 @@ const getUsers = async (req, res) => {
 }
 
 const createUser = async (req, res) => {
-    const { username, email, password, expiration, isAdmin } = req.body;
+    const { username, email, password, isAdmin } = req.body;
 
     if (!username) return res.status(400).json({ message: 'Username is required.' });
     if (!email) return res.status(400).json({ message: 'Email is required.' });
     if (!password) return res.status(400).json({ message: 'Password is required.' });
-    if (!expiration) return res.status(400).json({ message: 'Expiration is required.' });
     if (typeof isAdmin !== 'boolean') return res.status(400).json({ message: 'IsAdmin is required.' });
 
     const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_-]{2,15}$/;
@@ -63,8 +62,6 @@ const createUser = async (req, res) => {
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) return res.status(400).json({ message: 'The password must contain at least 8 characters, including at least one uppercase letter, one lowercase letter, one number and one special character.' });
 
-    if (isNaN(expiration) || expiration < Date.now()) return res.status(400).json({ message: 'The provided expiration is invalid.' });
-    console.log(expiration);
 
     const hashedPassword = bcrypt.hashSync(password, 10);
     const token = utils.generateString(56);
@@ -78,7 +75,7 @@ const createUser = async (req, res) => {
         token,
         subscription: {
             plan: isAdmin ? 'Admin' : 'Starter',
-            expires: expiration
+            expires: 0
         }
     });
     await user.save();
