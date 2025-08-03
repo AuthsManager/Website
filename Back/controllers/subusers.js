@@ -48,16 +48,29 @@ const createUser = async (req, res) => {
         return res.status(403).json({ message: 'Account suspended. Access denied.' });
     }
 
-    const { username, password, appId } = req.body;
+    const { username, password, appId, ownerId } = req.body;
 
     if (!username) return res.status(400).json({ message: 'Username is required.' });
     if (!password) return res.status(400).json({ message: 'Password is required.' });
     if (!appId) return res.status(400).json({ message: 'App id is required.' });
 
+    let effectiveOwnerId = req.user.id;
+    
+    if (req.user.isAdmin && ownerId) {
+        const owner = await User.findOne({ id: ownerId });
+        if (!owner) {
+            return res.status(400).json({ message: 'Invalid owner ID.' });
+        }
+        if (owner.banned) {
+            return res.status(403).json({ message: 'Owner account is suspended.' });
+        }
+        effectiveOwnerId = ownerId;
+    }
+
     const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_-]{2,15}$/;
     if (!usernameRegex.test(username)) return res.status(400).json({ message: 'The provided username is invalid.' });
 
-    const existingUsername = await SubUser.findOne({ ownerId: req.user.id, username });
+    const existingUsername = await SubUser.findOne({ ownerId: effectiveOwnerId, username });
     if (existingUsername) return res.status(400).json({ message: 'Username already in use.' });
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -69,7 +82,7 @@ const createUser = async (req, res) => {
     const hashedPassword = bcrypt.hashSync(password, 10);
     const token = utils.generateString(56);
 
-    const user = new SubUser({ ownerId: req.user.id, appId, id: crypto.randomUUID(), username, password: hashedPassword, token });
+    const user = new SubUser({ ownerId: effectiveOwnerId, appId, id: crypto.randomUUID(), username, password: hashedPassword, token });
     await user.save();
 
     return res.json({ id: user.id, username, appId });
