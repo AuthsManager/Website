@@ -627,12 +627,12 @@ function EditUserDialog({ user, updateUser }) {
 
 const UserManagementAdmin = ({ users, deleteUser, toggleBanUser, updateUser, fetcher }) => {
     const { user: currentUser } = useAuth();
-    const columns = ["ID", "Username", "Admin", "Status", "Created At", "Actions"];
+    const columns = ["ID", "Username", "Subscription", "Status", "Created At", "Actions"];
 
     const data = !users || !Array.isArray(users) ? [] : users.map(({ id, username, subscription, banned, created_at }) => ({
         id,
         username,
-        admin: (
+        sub: (
             <Badge variant={
                 subscription?.plan === 'Admin' ? 'default' :
                 subscription?.plan === 'Founder' ? 'destructive' :
@@ -651,7 +651,7 @@ const UserManagementAdmin = ({ users, deleteUser, toggleBanUser, updateUser, fet
             </Badge>
         ),
         createdAt: new Date(created_at).toLocaleDateString(),
-        action: (
+        actions: (
             <div className="flex items-center gap-2 justify-start md:justify-end">
                 <SubUsersDialog userId={id} username={username} fetcher={fetcher} />
                 <EditUserDialog user={{ id, username, email: users.find(u => u.id === id)?.email, subscription }} updateUser={updateUser} />
