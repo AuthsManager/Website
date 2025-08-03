@@ -122,7 +122,18 @@ const UserManagement = ({ users, deleteUser, updateUser }) => {
     const data = !users || !Array.isArray(users) ? [] : users.map(({ id, username, appId }) => ({
         id,
         username,
-        linkedApp: user.applications.find(app => app.id === appId)?.name || 'Unknown',
+        linkedApp: (() => {
+            const app = user.applications.find(app => app.id === appId);
+            if (!app) return 'Unknown';
+            
+            if (usersData) {
+                const owner = usersData.find(user => user.id === app.ownerId);
+                if (owner) {
+                    return `${app.name} (${owner.username})`;
+                }
+            }
+            return app.name;
+        })(),
         action: (
             <div className="flex items-center gap-2 justify-start md:justify-end">
                 <ActionButton icon={Ban} tooltip="Ban" onClick={() => {}} />
@@ -242,6 +253,15 @@ const UserManagement = ({ users, deleteUser, updateUser }) => {
 
 const LicenseManagement = ({ licenses, renewLicense, deleteLicense }) => {
     const { user } = useAuth();
+    
+    const fetcher = (url) => fetch(url, { headers: { 'Authorization': `Admin ${localStorage.getItem('token')}` } })
+        .then(response => response.json())
+        .catch(() => null);
+    const { data: usersData } = useSWR(`${BASE_API}/v${API_VERSION}/admin/users`, fetcher, { 
+        revalidateIfStale: false, 
+        revalidateOnFocus: false, 
+        revalidateOnReconnect: false 
+    });
     const columns = [
         "ID",
         "Name of license",
@@ -264,7 +284,18 @@ const LicenseManagement = ({ licenses, renewLicense, deleteLicense }) => {
                 {used ? 'Used' : Date.now() < expiration ? 'Active' : 'Expired'}
             </Badge>
         ),
-        linkedApp: user.applications.find(app => app.id === appId)?.name || 'Unknown',
+        linkedApp: (() => {
+            const app = user.applications.find(app => app.id === appId);
+            if (!app) return 'Unknown';
+            
+            if (usersData) {
+                const owner = usersData.find(user => user.id === app.ownerId);
+                if (owner) {
+                    return `${app.name} (${owner.username})`;
+                }
+            }
+            return app.name;
+        })(),
         actions: (
             <div className="flex items-center gap-2 justify-start md:justify-end">
                 <ActionButton icon={RefreshCw} color="blue" tooltip="Renew" onClick={() => renewLicense(id)} />
