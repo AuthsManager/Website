@@ -1,4 +1,4 @@
-import { useLocation, Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { User, Menu, Settings, LogOut } from "lucide-react";
 import {
@@ -62,7 +62,7 @@ export default function Header({ toggleSidebar }) {
                             <DropdownMenuContent align="end" className="w-56">
                                 <DropdownMenuItem asChild>
                                     <Link 
-                                        to={`/${location.pathname.includes('admin') ? 'admin' : 'dash'}/settings`}
+                                        to="/dash/settings"
                                         className="flex items-center gap-2 w-full cursor-pointer"
                                     >
                                         <Settings className="h-4 w-4" />
