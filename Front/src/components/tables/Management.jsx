@@ -1,6 +1,8 @@
 import React, { useState, useRef } from "react";
 import { toast } from "sonner";
 import moment from 'moment';
+import useSWR from 'swr';
+import { BASE_API, API_VERSION } from "@/config.json";
 import TableManagement from "./Table";
 import { Badge } from "@/components/ui/badge";
 import { Ban, RefreshCw, Pencil, Trash2, Edit } from "lucide-react";
@@ -24,7 +26,6 @@ import {
     DialogTrigger,
     DialogClose,
 } from "@/components/ui/dialog";
-import { BASE_API, API_VERSION } from "../../config.json";
 import {
     Tooltip,
     TooltipContent,
@@ -301,6 +302,25 @@ const LicenseManagement = ({ licenses, renewLicense, deleteLicense }) => {
 const AppManagement = ({ apps, renameApp, deleteApp }) => {
     const [nameInputs, setNameInputs] = useState({});
 
+    const fetcher = async (url) => {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: `Admin ${localStorage.getItem('token')}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch users');
+        }
+        
+        return response.json();
+    };
+    
+    const { data: usersData } = useSWR(`${BASE_API}/v${API_VERSION}/admin/users`, fetcher, {
+        revalidateOnFocus: false,
+        revalidateIfStale: false,
+        revalidateOnReconnect: false
+    });
+
     const SecretSpoiler = ({ secret }) => {
         const [copied, setCopied] = useState(false);
 
@@ -336,12 +356,15 @@ const AppManagement = ({ apps, renameApp, deleteApp }) => {
         );
     };
 
-    const columns = ["ID", "Name", "Owner ID", "Secret", "Actions"];
+    const columns = ["ID", "Name", "Owner", "Secret", "Actions"];
 
     const data = apps.map(app => ({
         id: app.id,
         name: app.name,
-        ownerId: app.ownerId,
+        ownerId: usersData ? (() => {
+            const owner = usersData.find(user => user.id === app.ownerId);
+            return owner ? `${app.ownerId} (${owner.username})` : app.ownerId;
+        })() : app.ownerId,
         secret: <SecretSpoiler secret={app.secret} />,
         actions: (
             <div className="flex items-center gap-2 justify-start md:justify-end">
