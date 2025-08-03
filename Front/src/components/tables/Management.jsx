@@ -126,12 +126,6 @@ const UserManagement = ({ users, deleteUser, updateUser }) => {
             const app = user.applications.find(app => app.id === appId);
             if (!app) return 'Unknown';
             
-            if (usersData) {
-                const owner = usersData.find(user => user.id === app.ownerId);
-                if (owner) {
-                    return `${app.name} (${owner.username})`;
-                }
-            }
             return app.name;
         })(),
         action: (
