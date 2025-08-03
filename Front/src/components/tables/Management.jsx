@@ -299,7 +299,7 @@ const LicenseManagement = ({ licenses, renewLicense, deleteLicense }) => {
 };
 
 const AppManagement = ({ apps, renameApp, deleteApp }) => {
-    const [name, setName] = useState('');
+    const [nameInputs, setNameInputs] = useState({});
 
     const SecretSpoiler = ({ secret }) => {
         const [copied, setCopied] = useState(false);
@@ -359,15 +359,18 @@ const AppManagement = ({ apps, renameApp, deleteApp }) => {
                             <Label>App name</Label>
                             <Input 
                                 placeholder={app.name}
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
+                                value={nameInputs[app.id] || ''}
+                                onChange={(e) => setNameInputs(prev => ({ ...prev, [app.id]: e.target.value }))}
                             />
                         </div>
                         <AlertDialogFooter className="mt-4">
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction 
-                                disabled={!(name)} 
-                                onClick={() => renameApp(app.id, name)}
+                                disabled={!nameInputs[app.id]} 
+                                onClick={() => {
+                                    renameApp(app.id, nameInputs[app.id]);
+                                    setNameInputs(prev => ({ ...prev, [app.id]: '' }));
+                                }}
                             >
                                 Rename
                             </AlertDialogAction>
@@ -388,7 +391,7 @@ const AppManagement = ({ apps, renameApp, deleteApp }) => {
                             This action is irreversible. The “{app.name}” application and all its associated data will be permanently deleted.                        
                         </p>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction 
                                 onClick={() => deleteApp(app.id)}
                                 className="bg-red-600 hover:bg-red-700"

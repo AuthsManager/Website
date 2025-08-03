@@ -51,7 +51,9 @@ export default function Apps() {
                 json
             ]);
             updateUser({ ...user, applications: [...apps, json] });
-
+            
+            setName('');
+            
             toast.success('Create app', { description: 'Successfully created your app.' });
         } else {
             toast.error('Create app', { description: json?.message || 'Failed to create your app. Try again.' });

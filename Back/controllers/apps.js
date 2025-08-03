@@ -72,7 +72,7 @@ const renameApp = async (req, res) => {
     }
 
     const { appId } = req.params;
-    const { name: newName } = req.body;
+    const { newName } = req.body;
 
     if (!newName) return res.status(400).json({ message: 'App name is required.' });
 
